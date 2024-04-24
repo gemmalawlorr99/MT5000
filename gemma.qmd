@@ -1,0 +1,179 @@
+---
+title: "Percentage of surviving infants who received the first dose of rubella-containing vaccine"
+subtitle: 'Based on 2001-2022 UNICEF Data For Children 12 to 23 months old'
+author: "Gemma Lawlor"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-title: Table of Contents
+    fig-width: 10
+    fig-height: 8
+    number-sections: false
+    embed-resources: true
+    code-tools: true
+    code-fold: true
+    highlight-style: tango
+    code-line-numbers: false
+editor: visual
+execute: 
+  warning: false
+  error: false
+  freeze: auto
+---
+
+The **primary** cause of **congenital rubella syndrome** when infection happens in the *first few weeks* of pregnancy is the rubella virus, which is the *pathogenic agent* of the disease rubella and is only spread between humans by respiratory contact. The dashboard's purpose is to raise awareness of the crucial global issue of baby rubella vaccination. It is crucial to make sure infants receive the first dose of the rubella-containing vaccine in a world where preventable diseases continue to endanger public health. This interactive dashboard, which is based on children between the ages of `12` and `23` months, offers a thorough summary of the percentage of newborn survivors who had their first dose of the rubella vaccination. In the face of persistent healthcare obstacles and fluctuating socioeconomic circumstances, this graphic provides an effective way to examine the percentage of living infants who have had their first dose of the rubella-containing vaccine administered throughout time. Viewers will have a comprehensive grasp of the scope of this public health issue and its influence on newborn health outcomes globally through interactive data investigation.
+
+# Visualizations
+
+## Data Transformation
+
+-   This process began by reading the two datasets into R using the following packages;
+
+1.  `readxl`
+
+2.  `tidyverse`
+
+```{r}
+#| code-summary: 'imports'
+
+
+# Load imports
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(tseries)
+library(maps)
+library(readxl)
+library(plotly)
+
+# Data loading
+data1 <- read_csv('unicef_metadata.csv')
+data2 <- read_excel('Unicef Indicator 1.xlsx')
+```
+
+-   This was followed by checking for missing values - a necessary step in data transformation.
+
+```{r}
+#| code-summary: 'check for missing values'
+sum(is.na(data1))
+sum(is.na(data2))
+```
+
+From the above results, both of the two datasets have missing values (represented by the numbers above). This is dealt with in the next step.
+
+```{r}
+#| code-summary: 'Remove missing values'
+data1 <- na.omit(data1)
+data2 <- data2 %>% 
+  select(country, alpha_3_code, indicator, time_period, obs_value) %>% 
+  rename(
+    country2 = country,
+    alpha_3_code2 = alpha_3_code
+  )
+```
+
+-   Join the two datasets.
+
+```{r}
+#| code-summary: 'joining datasets'
+data3 <- cbind(data1[1:4079,], data2)
+```
+
+## A world map
+
+```{r}
+#| code-summary: 'world map'
+
+
+
+Map <- map_data("world")
+
+# Merge world map data with countries
+data_merge <- merge(Map, data3, by.x = "region", by.y = "country2", all.x = TRUE)
+
+# Plot
+ggplot(data = data_merge, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = obs_value), color = "white") +
+  scale_fill_gradient(low = "brown", high = "yellow") +
+  labs(title = "Percentage of surviving infants who received the first dose of rubella-containing vaccine",
+       fill = "Surviving infants %") +
+  theme_void()
+```
+
+To begin with, the map analysis of the data sheds light on the proportion of newborns worldwide that survived following their initial injection of the rubella-containing vaccine. *These survival rates vary significantly among countries, ranging from all early ages to all late ages. In countries with higher survival rates, it is possible that a number of factors, including infrastructure constraints, healthcare budget, and socioeconomic status, are responsible for the differences in the effectiveness of the rubella vaccine.*
+
+The data highlights the varying success rates of Rubella vaccination programs globally. *Higher survival rates are probably attributable to stronger healthcare infrastructure, effective immunisation programmes, and easier access to medical supplies.*
+
+On the other hand, nations with lower survival rates might have trouble providing enough healthcare, including immunisation programs. It's possible that a number of factors, including infrastructure constraints, healthcare budget, and socioeconomic status, are responsible for the differences in the effectiveness of the rubella vaccine.
+
+## Time series
+
+```{r}
+#| code-summary: 'Time series'
+
+data3 %>%  
+  ggplot(aes(x=time_period, y=obs_value, color=country)) +
+  geom_line() +
+  labs(x='Year', y='Percentage of surviving infants', title='Trend of Percentage of surviving infants',
+       subtitle='They received the first dose of rubella-containing vaccine') +
+  theme_light() +
+  theme(legend.position='bottom')
+```
+
+To sum up, the **Rubella-Containing Vaccine has been extremely important in preventing the crippling effects of rubella and congenital rubella syndrome in infants around the world.** The plot above shows notable differences in survival rates between nations from 2001 to 2022. Some countries, like Cuba and Antigua and Barbuda, attain around 99% immunisation success rates, while other countries, like Montenegro, suffer with far lower rates, which fell as low as 18% in 2021. **Improved rubella vaccination survival rates seem to be correlated with economic success, as measured by greater GDPs, especially in Asia, Africa, and the Americas**.
+
+## Bar Plot
+
+```{r}
+#| code-summary: 'bar plot'
+#| fig-height: 27
+
+
+p1 <- data3 %>%
+  ggplot(aes(x=country2, y=obs_value, fill=country)) +
+  geom_col(position='identity') +
+  labs(x='', y='Percentage of surviving infants', title='Percentage of surviving infants',
+       subtitle='Received the first dose of rubella-containing vaccine') +
+  coord_flip() +
+  scale_y_continuous(breaks = NULL) +
+  theme_light() +
+  theme(legend.position='none')
+ggplotly(p1)
+```
+
+The above bar plot shows percentage of surviving infants who received the first dose of Rubella-containing vaccine in each country across the world. It shows notable observations that the average percentage of surviving infants lies between 75-100 %.
+
+## Scatter plot with regression
+
+```{r}
+#| code-summary: 'scatter with regression'
+data3 %>%
+  ggplot(aes(y=obs_value, color=country)) +
+  geom_point(aes(x=`GDP per capita (constant 2015 US$)`)) +
+  geom_smooth(aes(x=`GDP per capita (constant 2015 US$)`), method='lm', se=FALSE) +
+  labs(title='Percentage of surviving infants who received the first dose of rubella-containing vaccine') +
+  theme_light() +
+  theme(legend.position='bottom')
+```
+
+Countries with larger GDPs in Asia, Africa, and the Americas often had greater infant survival rates after receiving the first dose of the rubella-containing vaccination. The aforementioned link implies a relationship between enhanced healthcare results in these areas and economic development. It's crucial to remember, though, that variations in vaccine success rates are also influenced by variables other than GDP, such as healthcare policy and infrastructure.
+
+```{r}
+#| code-summary: 'Scatter plot 2'
+data3 %>% 
+  ggplot(aes(y=obs_value, color=country)) +
+  geom_point(aes(x=`Population, total`)) +
+  geom_smooth(aes(x=`Population, total`), method='lm', se=FALSE) +
+  labs(title='Percentage of surviving infants who received the first dose of rubella-containing vaccine',
+       subtitle='With respect to population') +
+  theme_light() +
+  theme(legend.position='bottom')
+```
+
+In the figure above, it can be seen that, percentage of surviving infants who received the first dose of rubella-containing vaccine affects total population of many countries. Fore instance, India which has the highest population, it can be observed that percentage of surviving infants is also high.
+
+# Conclusion
+
+The success of vaccinations is influenced by a number of factors, including healthcare facilities and socioeconomic conditions, therefore it is clear that obstacles remain in maintaining equitable access to vaccination programmes. It is critical that we keep funding strong healthcare systems, effective immunisation programmes, and fair access to medical resources as we negotiate the complexity of global healthcare. By taking on these obstacles head-on, we may work to raise the global rate of Rubella vaccination coverage, protecting the health and welfare of infants in the process.
